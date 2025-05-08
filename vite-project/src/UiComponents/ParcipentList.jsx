@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { motion } from 'framer-motion';
-import image from '../assets/pexels-x-y-1263157-2403402.jpg'; // Replace with your image
+import React, { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import image from "../assets/pexels-x-y-1263157-2403402.jpg";
 import { CiLink } from "react-icons/ci";
 
 export default function ParticipantList() {
   const [participants, setParticipants] = useState([
-    { name: '', assignedName: '', link: '' },
+    { name: "", assignedName: "", link: "" },
   ]);
+  const navigate = useNavigate();
 
   const handleChange = (index, e) => {
     const values = [...participants];
@@ -30,22 +32,22 @@ export default function ParticipantList() {
         backgroundImage: `url(${image})`,
       }}
     >
-      {/* Optional overlay for contrast */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-0" />
-
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, ease: 'easeOut' }}
+        transition={{ duration: 0.7, ease: "easeOut" }}
         className="relative z-10 bg-black/50 p-8 rounded-2xl shadow-xl w-full max-w-4xl border border-white/40 backdrop-blur-lg"
       >
         <h1 className="text-white text-3xl font-bold mb-6 text-center drop-shadow-md">
           Participant List
         </h1>
-
         <form className="space-y-6">
           {participants.map((participant, index) => (
-            <div key={index} className="flex justify-between space-x-4 items-center">
+            <div
+              key={index}
+              className="flex justify-between space-x-4 items-center"
+            >
               <div className="flex-1">
                 <Label
                   htmlFor={`name-${index}`}
@@ -63,7 +65,6 @@ export default function ParticipantList() {
                   className="mt-1 w-full p-2 border border-white focus:ring-2 focus:ring-white focus:outline-none bg-black text-white placeholder-gray-400"
                 />
               </div>
-
               <div className="flex-1">
                 <Label
                   htmlFor={`assignedName-${index}`}
@@ -81,7 +82,6 @@ export default function ParticipantList() {
                   className="mt-1 w-full p-2 border border-white focus:ring-2 focus:ring-white focus:outline-none bg-black text-white placeholder-gray-400"
                 />
               </div>
-
               <div className="flex-1">
                 <Label
                   htmlFor={`link-${index}`}
@@ -90,8 +90,8 @@ export default function ParticipantList() {
                   Link
                 </Label>
                 <div className="flex items-center space-x-2 mt-1">
-                  <CiLink className="text-white text-2xl" /> {/* Adjust size and color */}
-                  {/* <Input
+                  <CiLink className="text-white text-2xl" />
+                  <Input
                     id={`link-${index}`}
                     name="link"
                     value={participant.link}
@@ -99,37 +99,45 @@ export default function ParticipantList() {
                     placeholder="Enter Link"
                     required
                     className="w-full p-2 border border-white focus:ring-2 focus:ring-white focus:outline-none bg-black text-white placeholder-gray-400"
-                  /> */}
+                  />
                 </div>
               </div>
-
-              {/* <Button
+              <Button
                 type="button"
                 onClick={() => removeParticipant(index)}
                 className="bg-red-500 text-white py-1 px-3 rounded-md hover:bg-red-700 transition duration-300"
               >
                 Remove
-              </Button> */}
+              </Button>
             </div>
           ))}
-
-          {/* Add Participant Button */}
-          {/* <div className="flex justify-center">
+          <div className="flex justify-center">
             <Button
               type="button"
               onClick={() =>
                 setParticipants([
                   ...participants,
-                  { name: '', assignedName: '', link: '' },
+                  { name: "", assignedName: "", link: "" },
                 ])
               }
               className="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-700 transition duration-300"
             >
               Add Participant
             </Button>
-          </div> */}
+          </div>
         </form>
+        <div className="flex justify-center mt-6">
+          <Button
+            type="button"
+            onClick={() => navigate("/final")}
+            className="bg-white/20 text-white border border-white font-semibold py-3 rounded-md hover:bg-white/65 hover:text-black transition duration-300"
+          >
+            Continue to Final
+          </Button>
+        </div>
       </motion.div>
     </div>
   );
 }
+
+ response = [["a", "b"], ["b", "c"], ["c", "d"], ["d", "e"], ["e", "a"]]

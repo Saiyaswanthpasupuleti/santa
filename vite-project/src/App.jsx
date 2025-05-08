@@ -1,21 +1,42 @@
-import { Button } from "@/components/ui/button";
-import  OrganizerPage from "./UiComponents/OrganizerPage";  // Make sure this is correct
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import OrganizerPage from "./UiComponents/OrganizerPage";
 import ExcelUpload from "./UiComponents/ExcelUpload";
-import FestiveDesign from "./UiComponents/FinalPage";
-// import Participent from "./UiComponents/ParcipentList";
+// import ParticipantList from "./UiComponents/ParticipantList";
 import ParticipantList from "./UiComponents/ParcipentList";
-// import { BackgroundBoxesDemo, ExcelUpload } from "./UiComponents/ExcelUpload";
+import FinalPage from "./UiComponents/FinalPage";
+import { useState } from "react";
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  const handleAuth = () => {
+    setIsAuthenticated(true);
+  };
+
+  const ProtectedRoute = ({ children }) => {
+    if (!isAuthenticated) {
+      return <Navigate to="/" replace />;
+    }
+    return children;
+  };
+
   return (
-    <div>
-      {/* <OrganizerPage/> */}
-      {/* <ExcelUpload/> */}
-     {/* <ParticipantList/> */}
-
-      {/* <FestiveDesign/> */}
-
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<OrganizerPage  onAuth={handleAuth} />} />
+        <Route
+          path="/excel"
+          element={
+            <ProtectedRoute>
+              <ExcelUpload />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/participants" element={<ParticipantList />} />
+        <Route path="/final" element={<FinalPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
