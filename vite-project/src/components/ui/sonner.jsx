@@ -1,24 +1,13 @@
-import { useTheme } from "next-themes"
-import { Toaster as Sonner } from "sonner";
+import { Toaster } from "@/components/ui/sonner"
 
-const Toaster = ({
-  ...props
-}) => {
-  const { theme = "system" } = useTheme()
-
+export default function RootLayout({ children }) {
   return (
-    <Sonner
-      theme={theme}
-      className="toaster group"
-      style={
-        {
-          "--normal-bg": "var(--popover)",
-          "--normal-text": "var(--popover-foreground)",
-          "--normal-border": "var(--border)"
-        }
-      }
-      {...props} />
-  );
+    <html lang="en">
+      <head />
+      <body>
+        <main>{children}</main>
+        <Toaster />
+      </body>
+    </html>
+  )
 }
-
-export { Toaster }
