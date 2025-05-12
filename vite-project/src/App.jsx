@@ -1,43 +1,50 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { EventProvider } from "./context/eventContext";
+
+// Pages and Components
 import OrganizerPage from "./UiComponents/OrganizerPage";
 import ExcelUpload from "./UiComponents/ExcelUpload";
-// import ParticipantList from "./UiComponents/ParticipantList";
-import ParticipantList from "./UiComponents/ParcipentList";
 import FinalPage from "./UiComponents/FinalPage";
-import { useState } from "react";
+import ProtectedRoute from "./authentication/ProtectedRoute";
+import Dashboard from "./UiComponents/Dashboard";
+import {Toaster} from "react-hot-toast";
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
+  // Define the authentication handler
   const handleAuth = () => {
-    if(eventId)
-    setIsAuthenticated(true);
-  };
-
-  const ProtectedRoute = ({ children }) => {
-    if (!isAuthenticated) {
-      return <Navigate to="/" replace />;
-    }
-    return children;
+    console.log("✅ Authenticated successfully!");
+  
   };
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<OrganizerPage  onAuth={handleAuth} />} />
-        <Route
-          path="/excel"
-          element={
-            <ProtectedRoute>
-              <ExcelUpload />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/participants" element={<ParticipantList />} />
-        <Route path="/final" element={<FinalPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
+    <EventProvider>
+      <Router>
+        <Routes>
+          {/* Redirect '/' to '/create-event' */}
+          <Route path="/" element={<Navigate to="/create-event" replace />} />
+
+          {/* OrganizerPage mapped to /create-event */}
+          <Route path="/create-event" element={<OrganizerPage onAuth={handleAuth} />} />
+
+          {/* Protected route for Excel Upload */}
+          <Route
+            path="/:eventId"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route path="/reveal-secret-santa" element={<FinalPage />} />
+
+          {/* Optional fallback for undefined routes */}
+          <Route path="*" element={<Navigate to="/create-event" replace />} />
+        </Routes>
+      </Router>
+
+      <Toaster />
+    </EventProvider>
   );
 }
 

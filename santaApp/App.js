@@ -1,23 +1,45 @@
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import React from "react";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { EventProvider } from "./context/eventContext";
 
-import OrganizerScreen from './OrganizerPage';
+// Screens
+import OrganizerScreen from "./OrganizerPage";
+import ExcelUploadScreen from "./Excelsheet";
+// import ParticipantList from "./ParticipantList"; // Optional
+
 const Stack = createNativeStackNavigator();
-import ExcelUploadScreen from './Excelsheet';
+
 export default function App() {
   const handleAuth = () => {
-    console.log("Authenticated!");
+    console.log("✅ Authenticated successfully!");
   };
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator>
-        {/* <Stack.Screen name="Organizer" options={{ headerShown: false }}>
-          {(props) => <OrganizerScreen {...props} onAuth={handleAuth} />}
-        </Stack.Screen> */}
-      /  <Stack.Screen name="ExcelScreen" component={ExcelUploadScreen} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <EventProvider>
+      <NavigationContainer>
+        <Stack.Navigator initialRouteName="CreateEvent">
+          <Stack.Screen
+            name="CreateEvent"
+            options={{ headerShown: false }}
+          >
+            {() => <OrganizerScreen onAuth={handleAuth} />}
+          </Stack.Screen>
+
+          <Stack.Screen
+            name="ExcelUpload"
+            component={ExcelUploadScreen}
+            options={{ headerShown: false }}
+          />
+
+          {/* Optional route
+          <Stack.Screen
+            name="ParticipantsScreen"
+            component={ParticipantList}
+            options={{ headerShown: false }}
+          /> */}
+        </Stack.Navigator>
+      </NavigationContainer>
+    </EventProvider>
   );
 }

@@ -7,16 +7,20 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import PropTypes from "prop-types";
 import image from "../assets/pexels-x-y-1263157-2403402.jpg";
+import toast from "react-hot-toast";
+import { useEventContext } from "../context/eventContext"; // ✅ Added context import
 
 const OrganizerPage = ({ onAuth }) => {
   const [eventId, setEventId] = useState("");
   const [passcode, setPasscode] = useState("");
   const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState(""); // "success", "error", "warning"
+  const [messageType, setMessageType] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeneratingId, setIsGeneratingId] = useState(false);
   const navigate = useNavigate();
+  const { login } = useEventContext(); // ✅ Use event context
 
+  // Fetch a unique event ID from the backend
   const fetchUniqueId = async () => {
     setMessage("");
     setMessageType("");
@@ -30,7 +34,7 @@ const OrganizerPage = ({ onAuth }) => {
       });
 
       setEventId(response.data);
-      setMessage("✅ Unique Event ID generated!");
+      toast.success("Unique Event ID generated!");
       setMessageType("success");
     } catch (error) {
       const errorMsg = error.response?.data?.error || "Failed to generate unique ID. Please try again.";
@@ -41,6 +45,7 @@ const OrganizerPage = ({ onAuth }) => {
     }
   };
 
+  // Validate the form inputs
   const validateForm = () => {
     if (!eventId.trim()) {
       setMessage("⚠️ Event ID is required");
@@ -52,14 +57,10 @@ const OrganizerPage = ({ onAuth }) => {
       setMessageType("warning");
       return false;
     }
-    // if (passcode.length < 6) {
-    //   setMessage("⚠️ Passcode must be at least 6 characters long");
-    //   setMessageType("warning");
-    //   return false;
-    // }
     return true;
   };
 
+  // Submit the form
   const onSubmit = async (e) => {
     e.preventDefault();
     setMessage("");
@@ -86,9 +87,10 @@ const OrganizerPage = ({ onAuth }) => {
       );
 
       if (response.status === 201 || response.status === 200) {
-        onAuth();
-        navigate("/excel");
-        setTimeout(() => alert(response.data.message), 0); // Show backend message after navigation
+        login(eventId); // ✅ Call context login
+        onAuth(); // ✅ Optional: retain your custom auth handler
+        navigate(`/${eventId}`); // ✅ Dynamic route navigation
+        setTimeout(() => toast.success(response.data.message), 0);
       } else {
         const errorMsg = response.data.error || "An unexpected error occurred.";
         setMessage(`❌ ${errorMsg}`);
@@ -125,10 +127,7 @@ const OrganizerPage = ({ onAuth }) => {
         </h1>
         <form onSubmit={onSubmit} className="space-y-6" noValidate>
           <div>
-            <Label
-              htmlFor="eventId"
-              className="text-white font-medium drop-shadow"
-            >
+            <Label htmlFor="eventId" className="text-white font-medium drop-shadow">
               Event ID
             </Label>
             <Input
@@ -142,10 +141,7 @@ const OrganizerPage = ({ onAuth }) => {
             />
           </div>
           <div>
-            <Label
-              htmlFor="passcode"
-              className="text-white font-medium drop-shadow"
-            >
+            <Label htmlFor="passcode" className="text-white font-medium drop-shadow">
               Passcode
             </Label>
             <Input

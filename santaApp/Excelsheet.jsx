@@ -4,21 +4,26 @@ import {
   StyleSheet,
   ImageBackground,
   Text,
-  Alert,
   TouchableOpacity,
   Animated,
+  ActivityIndicator,
+  Platform,
 } from 'react-native';
-import * as DocumentPicker from 'expo-document-picker'; // or use react-native-document-picker
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import { Button } from 'react-native-elements';
 import { useNavigation } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
+import axios from 'axios';
 
-export default function ExcelUploadScreen() {
+export default function ExcelUploadScreen({ route }) {
   const [file, setFile] = useState(null);
-  const navigation = useNavigation();
-
-  // Animations
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
+  const navigation = useNavigation();
+
+  const { eventId } = route.params || {};
 
   useEffect(() => {
     Animated.parallel([
@@ -38,23 +43,79 @@ export default function ExcelUploadScreen() {
   const handleFilePick = async () => {
     try {
       const res = await DocumentPicker.getDocumentAsync({
-        type: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'],
+        type: [
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'application/vnd.ms-excel',
+        ],
         copyToCacheDirectory: true,
       });
 
       if (res.type === 'success') {
-        setFile(res);
+        const fileInfo = await FileSystem.getInfoAsync(res.uri);
+        if (!fileInfo.exists) {
+          throw new Error('File not found');
+        }
+
+        const formattedUri = Platform.OS === 'android' ? fileInfo.uri : fileInfo.uri.replace('file://', '');
+
+        setFile({
+          uri: formattedUri,
+          name: res.name || 'upload.xlsx',
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        });
+
+        console.log("✅ File picked:", res.name);
       }
     } catch (err) {
-      Alert.alert('Error', 'Failed to pick file');
+      Toast.show({ type: 'error', text1: 'File selection failed' });
+      console.error("❌ File selection error:", err);
     }
   };
 
-  const onSubmit = () => {
-    if (file) {
-      navigation.navigate('ParticipantsScreen');
-    } else {
-      Alert.alert('Upload Required', 'Please upload an Excel file.');
+  const onSubmit = async () => {
+    if (!file) {
+      Toast.show({ type: 'error', text1: 'Please select a file.' });
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('excel_file', {
+      uri: file.uri,
+      name: file.name,
+      type: file.type,
+    });
+    formData.append('eventID', eventId);
+
+    try {
+      setIsSubmitting(true);
+      console.log("📤 Uploading file:", file);
+
+      const res = await axios.post('http://10.0.2.2:8000/api/upload/', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (res.data.error) {
+        Toast.show({ type: 'error', text1: res.data.error });
+      } else {
+        Toast.show({ type: 'success', text1: 'Upload successful' });
+
+        const santaRes = await axios.get(`http://10.0.2.2:8000/api/get-santa-pairs?eventID=${eventId}`);
+        if (santaRes.data.santaPairs?.length > 0) {
+          Toast.show({ type: 'success', text1: 'Secret Santas assigned' });
+          navigation.navigate('ParticipantsScreen', { eventData: santaRes.data, eventId });
+        }
+      }
+    } catch (error) {
+      console.error("❌ Upload error:", error);
+      Toast.show({
+        type: 'error',
+        text1: 'Upload failed',
+        text2: error.response?.data?.error || error.message,
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -65,7 +126,6 @@ export default function ExcelUploadScreen() {
       resizeMode="cover"
     >
       <View style={styles.overlay} />
-
       <Animated.View
         style={[
           styles.container,
@@ -75,7 +135,7 @@ export default function ExcelUploadScreen() {
           },
         ]}
       >
-        <Text style={styles.title}>Excel File Upload</Text>
+        <Text style={styles.title}>📤 Excel File Upload</Text>
 
         <TouchableOpacity onPress={handleFilePick} style={styles.uploadButton}>
           <Text style={styles.uploadText}>
@@ -83,29 +143,26 @@ export default function ExcelUploadScreen() {
           </Text>
         </TouchableOpacity>
 
-        <Button
-          title="Upload"
-          type="outline"
-          onPress={onSubmit}
-          buttonStyle={styles.outlineButton}
-          titleStyle={{ color: '#fff' }}
-        />
+        {isSubmitting ? (
+          <ActivityIndicator color="#fff" style={{ marginVertical: 10 }} />
+        ) : (
+          <Button
+            title="Upload"
+            type="outline"
+            onPress={onSubmit}
+            buttonStyle={styles.outlineButton}
+            titleStyle={{ color: '#fff' }}
+          />
+        )}
 
-        <Button
-          title="Continue"
-          onPress={() => navigation.navigate('ParticipantsScreen')}
-          buttonStyle={styles.continueButton}
-        />
+        <Toast />
       </Animated.View>
     </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-    justifyContent: 'center',
-  },
+  background: { flex: 1, justifyContent: 'center' },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.6)',
@@ -137,10 +194,5 @@ const styles = StyleSheet.create({
   },
   outlineButton: {
     borderColor: '#fff',
-    marginBottom: 15,
-    backgroundColor: 'transparent',
-  },
-  continueButton: {
-    backgroundColor: 'rgba(255,255,255,0.3)',
   },
 });

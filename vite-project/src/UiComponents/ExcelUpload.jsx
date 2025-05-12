@@ -1,56 +1,113 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from 'react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import image from "../assets/pexels-x-y-1263157-2403402.jpg";
+import { useEventContext } from "../context/eventContext";
+import toast from "react-hot-toast";
 
-export default function ExcelUpload() {
+export default function ExcelUpload({ setShowParticipantData, setEventData }) {
   const [file, setFile] = useState(null);
+  const [fileUri, setFileUri] = useState(null);
+  const [fileName, setFileName] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitResult, setSubmitResult] = useState();
+  const { eventId } = useEventContext();
   const navigate = useNavigate();
 
-  const onFileChange = (e) => {
-    const selectedFile = e.target.files[0];
-    setFile(selectedFile);
+  // // Function to pick the file (for Expo)
+  // const pickFile = async () => {
+  //   try {
+  //     const result = await DocumentPicker.getDocumentAsync({
+  //       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // Specify MIME type for Excel files
+  //     });
 
-    if (selectedFile) {
-      console.log("File selected:", selectedFile.name);
-      console.log("Temporary file URL:", URL.createObjectURL(selectedFile));
-    }
+  //     if (result.type === 'success') {
+  //       setFileUri(result.uri);
+  //       setFileName(result.name);
+  //       console.log('File URI:', result.uri);
+  //       console.log('File Name:', result.name);
+  //     } else {
+  //       console.log('No file selected');
+  //     }
+  //   } catch (error) {
+  //     console.error('Error picking file:', error);
+  //   }
+  // };
+
+  const onFileChange = (e) => {
+    setFile(e.target.files[0]);
   };
 
-  const onSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!file) {
-      alert("Please upload an Excel file.");
+    if (!file && !fileUri) {
+      toast.error("Please select a file.");
       return;
     }
 
-    setIsSubmitting(true);
     const formData = new FormData();
-    formData.append("file", file);
-    formData.append("eventID", localStorage.getItem("eventID") || "");
+
+    // Check if fileUri is set (from Expo document picker)
+    if (fileUri) {
+      formData.append("excel_file", {
+        uri: fileUri,
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // MIME type for Excel file
+        name: fileName,
+      });
+    } else {
+      formData.append("excel_file", file);
+    }
+
+    formData.append("eventID", eventId);
 
     try {
-      // const response = await axios.post("http://localhost:8000/api/randomize-names/", formData, {
-      //   headers: {
-      //     "Content-Type": "multipart/form-data",
-      //   },
-      // });
+      setIsSubmitting(true); // Start the submitting process
+      const response = await axios.post("http://localhost:8000/api/upload/", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      console.log("Server response:", response);
 
-      console.log("Upload success:", response.data);
-      navigate("/participants");
+      // Check if the response contains an error regarding column mismatch
+      if (response.data.error) {
+        toast.error(response.data.error); // Display the error in toast if columns don't match
+      } else {
+        setSubmitResult(response);
+      }
     } catch (error) {
-      console.error("Error uploading file:", error);
-      alert(error.response?.data?.error || "An error occurred while uploading.");
+      console.error("Upload failed:", error.response?.data || error.message);
+      toast.error(error.response?.data.error);
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false); // Stop the submitting process
     }
   };
+
+  useEffect(() => {
+    const fetchSantaPairs = async () => {
+      try {
+        const res = await axios.get(`http://localhost:8000/api/get-santa-pairs?eventID=${eventId}`);
+        console.log("Santa Pairs:", res.data);
+
+        if (res.data.santaPairs && res.data.santaPairs.length > 0) {
+          toast.success("Secret santas assigned.");
+          setEventData(res.data);
+          setShowParticipantData(true);
+        }
+      } catch (error) {
+        console.error("Failed to fetch Santa pairs:", error);
+        toast.error("Failed to fetch Santa pairs. Please try again.");
+      }
+    };
+
+    if (submitResult) {
+      fetchSantaPairs();
+    }
+  }, [submitResult, setEventData, setShowParticipantData]);
 
   return (
     <div
@@ -72,19 +129,13 @@ export default function ExcelUpload() {
         >
           Excel File Upload
         </h1>
-        <form onSubmit={onSubmit} className="space-y-4" noValidate>
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
-              {/* <Label
-                htmlFor="file"
-                className="text-white text-lg font-medium drop-shadow tracking-wide"
-              >
-                Upload Excel File
-              </Label> */}
             </motion.div>
             <Input
               id="file"
@@ -107,6 +158,17 @@ export default function ExcelUpload() {
                 <p>Selected file: {file.name}</p>
               </div>
             )}
+            {/* <Button
+              className="mt-4"
+              onClick={pickFile}
+            >
+              Pick File (Expo)
+            </Button> */}
+            {fileUri && (
+              <div className="mt-2 text-white text-xs italic bg-black/20 border border-white/40 rounded-md p-2">
+                <p>Selected file: {fileName}</p>
+              </div>
+            )}
           </div>
           <div className="flex justify-center mt-4">
             <Button
@@ -123,3 +185,4 @@ export default function ExcelUpload() {
     </div>
   );
 }
+

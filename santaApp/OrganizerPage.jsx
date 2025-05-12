@@ -3,81 +3,119 @@ import {
   View,
   StyleSheet,
   ImageBackground,
-  Alert,
+  Text,
+  TouchableOpacity,
+  ActivityIndicator,
   Animated,
   Easing,
 } from 'react-native';
-import { Input, Button, Text } from 'react-native-elements';
-import Icon from 'react-native-vector-icons/FontAwesome';
+import { Input, Button } from 'react-native-elements';
 import { useNavigation } from '@react-navigation/native';
+import axios from 'axios';
+
+const API_BASE_URL = 'http://10.0.2.2:8000';
 
 export default function OrganizerScreen({ onAuth }) {
   const [eventId, setEventId] = useState('');
   const [passcode, setPasscode] = useState('');
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGeneratingId, setIsGeneratingId] = useState(false);
+
   const navigation = useNavigation();
 
-  // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-50)).current;
   const zoomAnim = useRef(new Animated.Value(0.8)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const inputFade1 = useRef(new Animated.Value(0)).current;
-  const inputFade2 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.sequence([
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          useNativeDriver: true,
-        }),
-        Animated.timing(zoomAnim, {
-          toValue: 1,
-          duration: 800,
-          easing: Easing.out(Easing.exp),
-          useNativeDriver: true,
-        }),
-      ]),
-      Animated.timing(inputFade1, {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 500,
+        duration: 700,
         useNativeDriver: true,
       }),
-      Animated.timing(inputFade2, {
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+      }),
+      Animated.timing(zoomAnim, {
         toValue: 1,
-        duration: 500,
+        duration: 700,
+        easing: Easing.out(Easing.exp),
         useNativeDriver: true,
       }),
     ]).start();
-
-    // Pulse animation for button
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.05,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
   }, []);
 
-  const onSubmit = () => {
-    if (eventId && passcode) {
-      onAuth && onAuth();
-      navigation.navigate('ExcelScreen');
-    } else {
-      Alert.alert('Validation Error', 'Please fill in both Event ID and Passcode.');
+  const fetchUniqueId = async () => {
+    setMessage('');
+    setMessageType('');
+    setIsGeneratingId(true);
+
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/generate-unique-id/`);
+      setEventId(response.data);
+      setMessage('✅ Unique Event ID generated!');
+      setMessageType('success');
+    } catch (error) {
+      const errorMsg = error.response?.data?.error || 'Failed to generate unique ID.';
+      setMessage(`❌ ${errorMsg}`);
+      console.log(error);
+      setMessageType('error');
+    } finally {
+      setIsGeneratingId(false);
+    }
+  };
+
+  const validateForm = () => {
+    if (!eventId.trim()) {
+      setMessage('⚠️ Event ID is required');
+      setMessageType('warning');
+      return false;
+    }
+    if (!passcode.trim()) {
+      setMessage('⚠️ Passcode is required');
+      setMessageType('warning');
+      return false;
+    }
+    return true;
+  };
+
+  const onSubmit = async () => {
+    setMessage('');
+    setMessageType('');
+    setIsSubmitting(true);
+
+    if (!validateForm()) {
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      const response = await axios.post(`${API_BASE_URL}/api/create-event/`, {
+        eventID: eventId,
+        password: passcode,
+      });
+
+      if (response.status === 201 || response.status === 200) {
+        onAuth && onAuth();
+        navigation.navigate('ExcelUpload', { eventId });
+        setMessage('✅ Event created successfully!');
+        setMessageType('success');
+      } else {
+        const errorMsg = response.data.error || 'Something went wrong.';
+        setMessage(`❌ ${errorMsg}`);
+        setMessageType('error');
+      }
+    } catch (error) {
+      const errorMsg = error.response?.data?.error || 'Failed to create event.';
+      setMessage(`❌ ${errorMsg}`);
+      console.log(error);
+      setMessageType('error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -89,62 +127,62 @@ export default function OrganizerScreen({ onAuth }) {
     >
       <View style={styles.overlay} />
 
-      <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
-        <Animated.Text
-          style={[
-            styles.title,
-            {
-              transform: [
-                { translateY: slideAnim },
-                { scale: zoomAnim },
-              ],
-            },
-          ]}
-        >
-          Event Organizer
-        </Animated.Text>
+      <Animated.View style={[styles.container, { opacity: fadeAnim, transform: [{ translateY: slideAnim }, { scale: zoomAnim }] }]}>
+        <Text style={styles.title}>Event Organizer</Text>
 
-        <Animated.View style={{ opacity: inputFade1 }}>
-          <Input
-            placeholder="Enter Event ID"
-            value={eventId}
-            onChangeText={setEventId}
-            placeholderTextColor="#ccc"
-            inputStyle={{ color: '#fff' }}
-            label="Event ID"
-            labelStyle={{ color: '#fff' }}
-            leftIcon={<Icon name="id-badge" size={20} color="#fff" />}
-          />
-        </Animated.View>
-
-        <Animated.View style={{ opacity: inputFade2 }}>
-          <Input
-            placeholder="Enter Passcode"
-            value={passcode}
-            onChangeText={setPasscode}
-            secureTextEntry
-            placeholderTextColor="#ccc"
-            inputStyle={{ color: '#fff' }}
-            label="Passcode"
-            labelStyle={{ color: '#fff' }}
-            leftIcon={<Icon name="lock" size={20} color="#fff" />}
-          />
-        </Animated.View>
-
-        <Button
-          title="Create Unique ID"
-          type="outline"
-          buttonStyle={styles.outlineButton}
-          titleStyle={{ color: '#fff' }}
+        <Input
+          placeholder="Enter Event ID"
+          value={eventId}
+          onChangeText={setEventId}
+          inputStyle={{ color: 'white' }}
+          placeholderTextColor="#ccc"
+          disabled={isSubmitting || isGeneratingId}
+        />
+        <Input
+          placeholder="Enter Passcode"
+          value={passcode}
+          onChangeText={setPasscode}
+          secureTextEntry
+          inputStyle={{ color: 'white' }}
+          placeholderTextColor="#ccc"
+          disabled={isSubmitting}
         />
 
-        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-          <Button
-            title="Continue"
-            onPress={onSubmit}
-            buttonStyle={styles.continueButton}
-          />
-        </Animated.View>
+        {message ? (
+          <Text
+            style={[
+              styles.message,
+              messageType === 'success'
+                ? styles.success
+                : messageType === 'error'
+                ? styles.error
+                : styles.warning,
+            ]}
+          >
+            {message}
+          </Text>
+        ) : null}
+
+        <View style={styles.buttonRow}>
+          <TouchableOpacity
+            onPress={fetchUniqueId}
+            disabled={isGeneratingId || isSubmitting}
+            style={styles.secondaryButton}
+          >
+            {isGeneratingId ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.secondaryButtonText}>Create Unique ID</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <Button
+          title={isSubmitting ? 'Submitting...' : 'Continue'}
+          onPress={onSubmit}
+          buttonStyle={styles.primaryButton}
+          disabled={isSubmitting || isGeneratingId}
+        />
       </Animated.View>
     </ImageBackground>
   );
@@ -160,24 +198,55 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
   container: {
-    padding: 20,
-    borderRadius: 15,
     marginHorizontal: 20,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    padding: 24,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   title: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
+    color: 'white',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  continueButton: {
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    marginTop: 15,
+  message: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 10,
   },
-  outlineButton: {
-    borderColor: '#fff',
-    marginBottom: 15,
+  success: {
+    color: '#90ee90',
+  },
+  error: {
+    color: '#ff7f7f',
+  },
+  warning: {
+    color: '#ffd700',
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  secondaryButton: {
+    borderWidth: 1,
+    borderColor: 'white',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  secondaryButtonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  primaryButton: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderColor: 'white',
+    borderWidth: 1,
+    borderRadius: 8,
   },
 });
